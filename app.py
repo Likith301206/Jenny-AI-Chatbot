@@ -9,6 +9,7 @@ from werkzeug.security import (
 )
 
 from functools import wraps
+from psycopg.errors import UniqueViolation
 
 from google import genai
 from dotenv import load_dotenv
@@ -34,10 +35,8 @@ app.secret_key = os.getenv(
     "jenny-development-key"
 )
 
-# Create database tables
 create_tables()
 
-# Initialize Gemini
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
 
@@ -115,7 +114,7 @@ def signup():
 
             connection.execute("""
                 INSERT INTO users (name, email, password)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
             """, (name, email, hashed_password))
 
             connection.commit()
@@ -123,7 +122,7 @@ def signup():
             user = connection.execute("""
                 SELECT id, name
                 FROM users
-                WHERE email = ?
+                WHERE email = %s
             """, (email,)).fetchone()
 
             session.clear()
@@ -133,20 +132,23 @@ def signup():
 
             return redirect(url_for("home"))
 
-        except Exception as e:
+        except UniqueViolation:
 
-            if "UNIQUE constraint failed" in str(e):
-
-                error = "This email is already registered."
-
-            else:
-
-                app.logger.exception("Signup error")
-                error = "Unable to create account."
+            connection.rollback()
 
             return render_template(
                 "signup.html",
-                error=error
+                error="This email is already registered."
+            )
+
+        except Exception:
+
+            connection.rollback()
+            app.logger.exception("Signup error")
+
+            return render_template(
+                "signup.html",
+                error="Unable to create account."
             )
 
         finally:
@@ -175,13 +177,16 @@ def login():
 
         connection = get_db_connection()
 
-        user = connection.execute("""
-            SELECT *
-            FROM users
-            WHERE email = ?
-        """, (email,)).fetchone()
+        try:
 
-        connection.close()
+            user = connection.execute("""
+                SELECT *
+                FROM users
+                WHERE email = %s
+            """, (email,)).fetchone()
+
+        finally:
+            connection.close()
 
         if user and check_password_hash(
             user["password"],
@@ -241,13 +246,15 @@ def chat():
 
     data = request.get_json(silent=True) or {}
 
-    user_message = data.get("message", "").strip()
+    user_message = data.get("message", "")
     history = data.get("history", [])
 
-    if not isinstance(user_message, str) or not user_message:
+    if not isinstance(user_message, str) or not user_message.strip():
         return jsonify({
             "error": "Message cannot be empty"
         }), 400
+
+    user_message = user_message.strip()
 
     if not isinstance(history, list):
         return jsonify({
@@ -312,14 +319,13 @@ def chat():
 
             conversation_id = session.get("conversation_id")
 
-            # Verify that the current conversation belongs to this user
             if conversation_id:
 
                 existing = connection.execute("""
                     SELECT id
                     FROM chats
-                    WHERE conversation_id = ?
-                    AND user_id = ?
+                    WHERE conversation_id = %s
+                    AND user_id = %s
                     LIMIT 1
                 """, (
                     conversation_id,
@@ -341,7 +347,7 @@ def chat():
                     ai_response,
                     user_id
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
             """, (
                 conversation_id,
                 user_message,
@@ -377,18 +383,21 @@ def chat_history():
 
     connection = get_db_connection()
 
-    chats = connection.execute("""
-        SELECT *
-        FROM chats
-        WHERE user_id = ?
-        ORDER BY created_at DESC
-    """, (session["user_id"],)).fetchall()
+    try:
 
-    connection.close()
+        chats = connection.execute("""
+            SELECT *
+            FROM chats
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """, (session["user_id"],)).fetchall()
 
-    return jsonify([
-        dict(row) for row in chats
-    ])
+        return jsonify([
+            dict(row) for row in chats
+        ])
+
+    finally:
+        connection.close()
 
 
 # =====================================
@@ -401,36 +410,39 @@ def get_conversations():
 
     connection = get_db_connection()
 
-    conversations = connection.execute("""
-        SELECT
-            conversation_id,
+    try:
 
-            (
-                SELECT user_message
-                FROM chats AS c2
-                WHERE c2.conversation_id = c1.conversation_id
-                AND c2.user_id = c1.user_id
-                ORDER BY id ASC
-                LIMIT 1
-            ) AS title,
+        conversations = connection.execute("""
+            SELECT
+                c1.conversation_id,
 
-            MAX(created_at) AS last_updated,
-            COUNT(*) AS message_count
+                (
+                    SELECT c2.user_message
+                    FROM chats AS c2
+                    WHERE c2.conversation_id = c1.conversation_id
+                    AND c2.user_id = c1.user_id
+                    ORDER BY c2.id ASC
+                    LIMIT 1
+                ) AS title,
 
-        FROM chats AS c1
+                MAX(c1.created_at) AS last_updated,
+                COUNT(*) AS message_count
 
-        WHERE user_id = ?
+            FROM chats AS c1
 
-        GROUP BY conversation_id
+            WHERE c1.user_id = %s
 
-        ORDER BY MAX(id) DESC
-    """, (session["user_id"],)).fetchall()
+            GROUP BY c1.conversation_id, c1.user_id
 
-    connection.close()
+            ORDER BY MAX(c1.id) DESC
+        """, (session["user_id"],)).fetchall()
 
-    return jsonify([
-        dict(row) for row in conversations
-    ])
+        return jsonify([
+            dict(row) for row in conversations
+        ])
+
+    finally:
+        connection.close()
 
 
 # =====================================
@@ -443,26 +455,28 @@ def get_conversation(conversation_id):
 
     connection = get_db_connection()
 
-    messages = connection.execute("""
-        SELECT user_message, ai_response
-        FROM chats
-        WHERE conversation_id = ?
-        AND user_id = ?
-        ORDER BY id ASC
-    """, (
-        conversation_id,
-        session["user_id"]
-    )).fetchall()
+    try:
 
-    connection.close()
+        messages = connection.execute("""
+            SELECT user_message, ai_response
+            FROM chats
+            WHERE conversation_id = %s
+            AND user_id = %s
+            ORDER BY id ASC
+        """, (
+            conversation_id,
+            session["user_id"]
+        )).fetchall()
 
-    if messages:
+        if messages:
+            session["conversation_id"] = conversation_id
 
-        session["conversation_id"] = conversation_id
+        return jsonify([
+            dict(row) for row in messages
+        ])
 
-    return jsonify([
-        dict(row) for row in messages
-    ])
+    finally:
+        connection.close()
 
 
 # =====================================
@@ -475,33 +489,45 @@ def delete_conversation(conversation_id):
 
     connection = get_db_connection()
 
-    cursor = connection.execute("""
-        DELETE FROM chats
-        WHERE conversation_id = ?
-        AND user_id = ?
-    """, (
-        conversation_id,
-        session["user_id"]
-    ))
+    try:
 
-    deleted_count = cursor.rowcount
+        cursor = connection.execute("""
+            DELETE FROM chats
+            WHERE conversation_id = %s
+            AND user_id = %s
+        """, (
+            conversation_id,
+            session["user_id"]
+        ))
 
-    connection.commit()
-    connection.close()
+        deleted_count = cursor.rowcount
 
-    if deleted_count == 0:
+        connection.commit()
+
+        if deleted_count == 0:
+
+            return jsonify({
+                "error": "Conversation not found"
+            }), 404
+
+        if session.get("conversation_id") == conversation_id:
+            session.pop("conversation_id", None)
 
         return jsonify({
-            "error": "Conversation not found"
-        }), 404
+            "message": "Conversation deleted successfully"
+        })
 
-    if session.get("conversation_id") == conversation_id:
+    except Exception:
 
-        session.pop("conversation_id", None)
+        connection.rollback()
+        app.logger.exception("Delete conversation error")
 
-    return jsonify({
-        "message": "Conversation deleted successfully"
-    })
+        return jsonify({
+            "error": "Unable to delete conversation."
+        }), 500
+
+    finally:
+        connection.close()
 
 
 # =====================================
@@ -512,17 +538,16 @@ def delete_conversation(conversation_id):
 @login_required
 def clear_chats():
 
-    try:
+    connection = get_db_connection()
 
-        connection = get_db_connection()
+    try:
 
         connection.execute("""
             DELETE FROM chats
-            WHERE user_id = ?
+            WHERE user_id = %s
         """, (session["user_id"],))
 
         connection.commit()
-        connection.close()
 
         session.pop("conversation_id", None)
 
@@ -533,12 +558,16 @@ def clear_chats():
 
     except Exception:
 
+        connection.rollback()
         app.logger.exception("Clear chats error")
 
         return jsonify({
             "success": False,
             "error": "Unable to clear chats."
         }), 500
+
+    finally:
+        connection.close()
 
 
 # =====================================
@@ -551,12 +580,14 @@ def generate_image():
 
     data = request.get_json(silent=True) or {}
 
-    prompt = data.get("prompt", "").strip()
+    prompt = data.get("prompt", "")
 
-    if not isinstance(prompt, str) or not prompt:
+    if not isinstance(prompt, str) or not prompt.strip():
         return jsonify({
             "error": "Please enter an image prompt"
         }), 400
+
+    prompt = prompt.strip()
 
     account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
     api_token = os.getenv("CLOUDFLARE_API_TOKEN")
@@ -622,7 +653,6 @@ def generate_image():
         )
 
         with open(image_path, "wb") as image_file:
-
             image_file.write(image_data)
 
         image_url = f"/static/images/generated/{filename}"

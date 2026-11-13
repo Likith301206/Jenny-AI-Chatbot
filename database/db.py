@@ -1,77 +1,86 @@
-import sqlite3
 import os
+import psycopg
 
-DATABASE_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "jenny.db"
-)
+from psycopg.rows import dict_row
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 def get_db_connection():
-    connection = sqlite3.connect(DATABASE_PATH)
-    connection.row_factory = sqlite3.Row
+
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is missing from .env")
+
+    connection = psycopg.connect(
+        DATABASE_URL,
+        row_factory=dict_row
+    )
+
     return connection
 
 
 def create_tables():
+
     connection = get_db_connection()
-    cursor = connection.cursor()
 
-    # USERS TABLE
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    try:
+        with connection.cursor() as cursor:
 
-    # CHATS TABLE
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS chats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            conversation_id TEXT,
-            user_message TEXT NOT NULL,
-            ai_response TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+            # USERS TABLE
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id BIGSERIAL PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    email VARCHAR(254) UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
 
-    # Check existing chat columns
-    cursor.execute("PRAGMA table_info(chats)")
-    columns = [column["name"] for column in cursor.fetchall()]
+            # CHATS TABLE
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS chats (
+                    id BIGSERIAL PRIMARY KEY,
+                    conversation_id TEXT,
+                    user_message TEXT NOT NULL,
+                    ai_response TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
 
-    # Migration: conversation_id
-    if "conversation_id" not in columns:
-        cursor.execute(
-            "ALTER TABLE chats ADD COLUMN conversation_id TEXT"
-        )
+            # Ensure required columns exist
+            cursor.execute("""
+                ALTER TABLE chats
+                ADD COLUMN IF NOT EXISTS conversation_id TEXT
+            """)
 
-    # Migration: user_id
-    if "user_id" not in columns:
-        cursor.execute(
-            "ALTER TABLE chats ADD COLUMN user_id INTEGER"
-        )
+            cursor.execute("""
+                ALTER TABLE chats
+                ADD COLUMN IF NOT EXISTS user_id BIGINT
+                REFERENCES users(id) ON DELETE CASCADE
+            """)
 
-    # Handle old conversations
-    cursor.execute("""
-        UPDATE chats
-        SET conversation_id = 'old-' || id
-        WHERE conversation_id IS NULL
-    """)
+            # INDEXES
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chats_user
+                ON chats(user_id)
+            """)
 
-    # Indexes
-    cursor.execute("""
-        CREATE INDEX IF NOT EXISTS idx_chats_user
-        ON chats(user_id)
-    """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chats_conversation
+                ON chats(conversation_id)
+            """)
 
-    cursor.execute("""
-        CREATE INDEX IF NOT EXISTS idx_chats_conversation
-        ON chats(conversation_id)
-    """)
+        connection.commit()
 
-    connection.commit()
-    connection.close()
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        connection.close()
