@@ -1759,4 +1759,199 @@ html {
         min-width: 40px;
     }
 }
+/* SETTINGS MODAL */
+.settings-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
 
+.settings-content {
+    background: #ffffff;
+    width: 100%;
+    max-width: 480px;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.settings-header h2 {
+    margin: 0;
+    color: #171717;
+}
+
+.settings-header button {
+    border: none;
+    background: transparent;
+    font-size: 28px;
+    cursor: pointer;
+    color: #555;
+}
+
+.settings-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid #eeeeee;
+    gap: 15px;
+}
+
+.settings-option h3,
+.settings-about h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    color: #171717;
+}
+
+.settings-option p,
+.settings-about p {
+    margin: 0;
+    font-size: 13px;
+    color: #777;
+}
+
+.settings-option select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.settings-option input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.settings-about {
+    padding-top: 20px;
+}
+
+.settings-about small {
+    display: block;
+    margin-top: 8px;
+    color: #999;
+}
+/* ========================================
+   JENNY DARK THEME
+======================================== */
+
+body.dark-theme {
+    background: #121212;
+    color: #f5f5f5;
+}
+
+body.dark-theme .main-content {
+    background: #121212;
+}
+
+body.dark-theme .top-header {
+    background: #181818;
+    border-color: #303030;
+    color: #ffffff;
+}
+
+body.dark-theme .chat-area {
+    background: #121212;
+}
+
+body.dark-theme .welcome-screen h1 {
+    color: #ffffff;
+}
+
+body.dark-theme .welcome-screen p {
+    color: #b0b0b0;
+}
+
+body.dark-theme .suggestion-card {
+    background: #1e1e1e;
+    border-color: #333333;
+    color: #ffffff;
+}
+
+body.dark-theme .suggestion-card h4 {
+    color: #ffffff;
+}
+
+body.dark-theme .suggestion-card p {
+    color: #aaaaaa;
+}
+
+body.dark-theme .chat-footer {
+    background: #121212;
+    border-color: #333333;
+}
+
+body.dark-theme .message-form {
+    background: #1e1e1e;
+    border-color: #444444;
+}
+
+body.dark-theme #messageInput {
+    background: transparent;
+    color: #ffffff;
+}
+
+body.dark-theme #messageInput::placeholder {
+    color: #999999;
+}
+
+body.dark-theme .footer-note {
+    color: #888888;
+}
+
+/* Settings in dark mode */
+
+body.dark-theme .settings-content {
+    background: #1e1e1e;
+    color: #ffffff;
+}
+
+body.dark-theme .settings-header h2,
+body.dark-theme .settings-option h3,
+body.dark-theme .settings-about h3 {
+    color: #ffffff;
+}
+
+body.dark-theme .settings-option p,
+body.dark-theme .settings-about p {
+    color: #aaaaaa;
+}
+
+body.dark-theme .settings-option {
+    border-color: #383838;
+}
+
+body.dark-theme .settings-option select {
+    background: #292929;
+    color: #ffffff;
+    border-color: #555555;
+}
+
+body.dark-theme .settings-header button {
+    color: #ffffff;
+}
+
+body.dark-theme .settings-about small {
+    color: #888888;
+}
+.logout-form {
+    width: 100%;
+}
+
+.logout-form button {
+    width: 100%;
+    text-align: left;
+}

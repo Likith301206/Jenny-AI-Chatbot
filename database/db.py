@@ -17,6 +17,18 @@ def create_tables():
     connection = get_db_connection()
     cursor = connection.cursor()
 
+    # USERS TABLE
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # CHATS TABLE
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS chats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,20 +39,38 @@ def create_tables():
         )
     """)
 
-    # Check whether conversation_id already exists
+    # Check existing chat columns
     cursor.execute("PRAGMA table_info(chats)")
     columns = [column["name"] for column in cursor.fetchall()]
 
+    # Migration: conversation_id
     if "conversation_id" not in columns:
         cursor.execute(
             "ALTER TABLE chats ADD COLUMN conversation_id TEXT"
         )
 
-    # Give existing messages individual conversation IDs
+    # Migration: user_id
+    if "user_id" not in columns:
+        cursor.execute(
+            "ALTER TABLE chats ADD COLUMN user_id INTEGER"
+        )
+
+    # Handle old conversations
     cursor.execute("""
         UPDATE chats
         SET conversation_id = 'old-' || id
         WHERE conversation_id IS NULL
+    """)
+
+    # Indexes
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_chats_user
+        ON chats(user_id)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_chats_conversation
+        ON chats(conversation_id)
     """)
 
     connection.commit()

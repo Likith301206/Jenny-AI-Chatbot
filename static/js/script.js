@@ -595,3 +595,132 @@ console.log("Cloudflare image generation enabled!");
 console.log("Conversation memory enabled!");
 console.log("Auto-scroll enabled!");
 console.log("Mobile sidebar enabled!");
+// Clear all chats
+const clearChatsBtn = document.getElementById("clearChatsBtn");
+
+if (clearChatsBtn) {
+    clearChatsBtn.addEventListener("click", async () => {
+        const confirmClear = confirm(
+            "Are you sure you want to delete ALL chat history? This cannot be undone."
+        );
+
+        if (!confirmClear) return;
+
+        try {
+            const response = await fetch("/clear-chats", {
+                method: "DELETE"
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                conversationHistory = [];
+                messagesContainer.innerHTML = "";
+                loadChatHistory();
+
+document.getElementById("welcomeScreen").style.display = "";
+                alert("All chats cleared successfully!");
+            } else {
+                alert("Failed to clear chats. Please try again.");
+            }
+        } catch (error) {
+            console.error("Clear chats error:", error);
+            alert("Something went wrong while clearing chats.");
+        }
+    });
+}
+// ========================================
+// SETTINGS FUNCTIONALITY
+// ========================================
+
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsModal = document.getElementById("settingsModal");
+const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+const themeSelect = document.getElementById("themeSelect");
+const enterToSend = document.getElementById("enterToSend");
+
+// Open settings
+settingsBtn.addEventListener("click", () => {
+    settingsModal.style.display = "flex";
+});
+
+// Close settings
+closeSettingsBtn.addEventListener("click", () => {
+    settingsModal.style.display = "none";
+});
+
+// Close when clicking outside
+settingsModal.addEventListener("click", (event) => {
+    if (event.target === settingsModal) {
+        settingsModal.style.display = "none";
+    }
+});
+
+// Close with Escape
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+        settingsModal.style.display = "none";
+    }
+});
+
+// Theme preference
+const savedTheme = localStorage.getItem("jennyTheme") || "light";
+
+themeSelect.value = savedTheme;
+document.body.classList.toggle("dark-theme", savedTheme === "dark");
+
+themeSelect.addEventListener("change", () => {
+    const selectedTheme = themeSelect.value;
+
+    document.body.classList.toggle(
+        "dark-theme",
+        selectedTheme === "dark"
+    );
+
+    localStorage.setItem("jennyTheme", selectedTheme);
+});
+
+// Enter to Send preference
+const savedEnterPreference = localStorage.getItem("jennyEnterToSend");
+
+if (savedEnterPreference !== null) {
+    enterToSend.checked = savedEnterPreference === "true";
+}
+
+enterToSend.addEventListener("change", () => {
+    localStorage.setItem("jennyEnterToSend", enterToSend.checked);
+});
+
+// Handle Enter key
+messageInput.addEventListener("keydown", (event) => {
+    if (
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        enterToSend.checked
+    ) {
+        event.preventDefault();
+        chatForm.requestSubmit();
+    }
+});
+// Logout
+const logoutBtn = document.getElementById("logoutBtn");
+
+if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+        const confirmLogout = confirm("Are you sure you want to log out?");
+
+        if (!confirmLogout) return;
+
+        try {
+            await fetch("/logout", {
+                method: "POST"
+            });
+
+            window.location.href = "/login";
+
+        } catch (error) {
+            console.error("Logout failed:", error);
+            alert("Unable to log out. Please try again.");
+        }
+    });
+}

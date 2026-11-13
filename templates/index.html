@@ -7,10 +7,13 @@
 
     <title>Jenny - AI Chat Assistant</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
 </head>
 
 <body>
@@ -20,53 +23,48 @@
         <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
 
+            <!-- BRAND -->
             <div class="brand">
                 <div class="brand-icon">J</div>
+
                 <div>
                     <h2>Jenny</h2>
                     <p>Your AI Assistant</p>
                 </div>
             </div>
 
+            <!-- NEW CHAT -->
             <button class="new-chat-btn" id="newChatBtn" type="button">
                 <span>+</span> New Chat
             </button>
 
             <!-- CHAT HISTORY -->
             <div class="history-section">
-
                 <h3>CHAT HISTORY</h3>
-
-                <div class="chat-history" id="chatHistory">
-
-                    <div class="history-item active">
-                        <span>▢</span>
-                        <p>General Conversation</p>
-                        <span class="more">⋮</span>
-                    </div>
-
-                    <div class="history-item">
-                        <span>▢</span>
-                        <p>Coding Help</p>
-                        <span class="more">⋮</span>
-                    </div>
-
-                    <div class="history-item">
-                        <span>▢</span>
-                        <p>Study Assistance</p>
-                        <span class="more">⋮</span>
-                    </div>
-
-                </div>
-
+                <div class="chat-history" id="chatHistory"></div>
             </div>
 
             <!-- SIDEBAR BOTTOM -->
             <div class="sidebar-bottom">
 
-                <button type="button">⚙ Settings</button>
-                <button type="button" id="clearChatsBtn">▤ Clear Chats</button>
-                <button type="button">⇥ Logout</button>
+                <button type="button" id="settingsBtn">
+                    ⚙ Settings
+                </button>
+
+                <button type="button" id="clearChatsBtn">
+                    ▤ Clear All Chats
+                </button>
+
+                <!-- LOGOUT -->
+                <form action="{{ url_for('logout') }}"
+                    method="POST"
+                    class="logout-form">
+
+                    <button type="submit">
+                        ⇥ Logout
+                    </button>
+
+                </form>
 
             </div>
 
@@ -75,7 +73,7 @@
         <!-- MOBILE HISTORY OVERLAY -->
         <div class="history-overlay" id="historyOverlay"></div>
 
-        <!-- MAIN CHAT AREA -->
+        <!-- MAIN CONTENT -->
         <main class="main-content">
 
             <!-- HEADER -->
@@ -87,7 +85,9 @@
                     type="button"
                     aria-label="Open chat history"
                     aria-expanded="false">
+
                     ☰
+
                 </button>
 
                 <div class="header-title">
@@ -95,14 +95,20 @@
                     <span class="online-status">● Online</span>
                 </div>
 
+                <!-- USER PROFILE -->
                 <div class="profile">
-                    <div class="profile-avatar">L</div>
-                    <span>Likith</span>
+
+                    <div class="profile-avatar">
+                        {{ user_name[0]|upper if user_name else 'U' }}
+                    </div>
+
+                    <span>{{ user_name }}</span>
+
                 </div>
 
             </header>
 
-            <!-- CHAT CONTENT -->
+            <!-- CHAT AREA -->
             <section class="chat-area" id="chatArea">
 
                 <!-- WELCOME SCREEN -->
@@ -110,28 +116,46 @@
 
                     <div class="welcome-icon">J</div>
 
-                    <h1>Welcome to <span>Jenny</span></h1>
+                    <h1>
+                        Welcome to <span>Jenny</span>
+                    </h1>
 
-                    <p>Your intelligent AI companion. Ask anything, anytime!</p>
+                    <p>
+                        Your intelligent AI companion.
+                        Ask anything, anytime!
+                    </p>
 
+                    <!-- SUGGESTION CARDS -->
                     <div class="suggestion-cards">
 
                         <button class="suggestion-card" type="button">
+
                             <span>⌘</span>
+
                             <h4>Help me with coding</h4>
+
                             <p>Programming and debugging</p>
+
                         </button>
 
                         <button class="suggestion-card" type="button">
+
                             <span>✦</span>
+
                             <h4>Explain a concept</h4>
+
                             <p>Learn something new</p>
+
                         </button>
 
                         <button class="suggestion-card" type="button">
+
                             <span>💡</span>
+
                             <h4>Explore ideas</h4>
+
                             <p>Discover creative solutions</p>
+
                         </button>
 
                     </div>
@@ -139,7 +163,9 @@
                 </div>
 
                 <!-- MESSAGES -->
-                <div class="messages-container" id="messagesContainer">
+                <div
+                    class="messages-container"
+                    id="messagesContainer">
                 </div>
 
             </section>
@@ -153,13 +179,8 @@
                         type="text"
                         id="messageInput"
                         placeholder="Ask Jenny anything..."
-                        autocomplete="off"
-                    >
+                        autocomplete="off">
 
-                    <!-- IMAGE GENERATION BUTTON -->
-                    
-
-                    <!-- SEND MESSAGE BUTTON -->
                     <button type="submit" id="sendBtn">
                         ➤
                     </button>
@@ -167,12 +188,66 @@
                 </form>
 
                 <p class="footer-note">
-                    Jenny can make mistakes. Verify important information.
+                    Jenny can make mistakes.
+                    Verify important information.
                 </p>
 
             </footer>
 
         </main>
+
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="settings-modal" id="settingsModal">
+
+        <div class="settings-content">
+
+            <!-- SETTINGS HEADER -->
+            <div class="settings-header">
+
+                <h2>Jenny Settings</h2>
+
+                <button
+                    type="button"
+                    id="closeSettingsBtn"
+                    aria-label="Close settings">
+
+                    &times;
+
+                </button>
+
+            </div>
+
+            <!-- APPEARANCE SETTINGS -->
+            <div class="settings-option">
+
+                <div>
+                    <h3>Appearance</h3>
+                    <p>Choose your preferred theme</p>
+                </div>
+
+                <select id="themeSelect">
+
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+
+                </select>
+
+            </div>
+
+            <!-- ABOUT JENNY -->
+            <div class="settings-about">
+
+                <h3>About Jenny</h3>
+
+                <p>Jenny – Your AI Chat Assistant</p>
+
+                <small>Version 1.0</small>
+
+            </div>
+
+        </div>
 
     </div>
 
@@ -182,10 +257,12 @@
     <!-- SYNTAX HIGHLIGHTING -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 
+    <!-- PYTHON SYNTAX -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/python.min.js"></script>
 
     <!-- JENNY JAVASCRIPT -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 
 </body>
+
 </html>

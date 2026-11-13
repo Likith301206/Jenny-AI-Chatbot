@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Jenny</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <div class="auth-logo">J</div>
+
+            <h1>Welcome Back</h1>
+            <p>Login to continue with Jenny</p>
+
+            {% if error %}
+                <div class="error-message">{{ error }}</div>
+            {% endif %}
+
+            <form method="POST" action="/login">
+
+                <label>Email Address</label>
+                <input type="email" name="email"
+                       placeholder="Enter your email" required>
+
+                <label>Password</label>
+                <input type="password" name="password"
+                       placeholder="Enter your password" required>
+
+                <button type="submit">Login</button>
+
+            </form>
+
+            <p class="auth-footer">
+                Don't have an account?
+                <a href="/signup">Create Account</a>
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+</html>
